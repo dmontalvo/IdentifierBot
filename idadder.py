@@ -29,7 +29,6 @@ for row in reader:
             data['identifiers']['librarything'] = [ltid]
     else:
         data['identifiers'] = {'librarything': [ltid]}
-    print data
-    #ol.save(key, data, 'Testing IdentifierBot')  
+    ol.save(key, data, 'Testing IdentifierBot')  
     c.execute('insert into ids values (?, ?)', (key, ltid))
     conn.commit()
