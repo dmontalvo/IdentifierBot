@@ -8,12 +8,13 @@ import _init_path
 from openlibrary.api import OpenLibrary
 
 ol = OpenLibrary('http://openlibrary.org/')
+
 for attempt in range(5):
     try:
         ol.autologin()
         break
     except:
-        print 'ol.autologin error, retrying'
+        print 'ol.autologin() error; retrying'
 conn = sqlite3.connect(db)
 c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
@@ -31,7 +32,7 @@ for row in reader:
             data = ol.get(key)
             break
         except:
-            print 'ol.get() error, retrying'
+            print 'ol.get() error; retrying'
     if data.has_key('identifiers'):
         if data['identifiers'].has_key('librarything'):
             if data['identifiers']['librarything'].count(ltid) == 0:
