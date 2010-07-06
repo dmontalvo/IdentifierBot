@@ -10,6 +10,11 @@ import sys
 from openlibrary.api import OpenLibrary
 
 ol = OpenLibrary('http://openlibrary.org/')
+conn = sqlite3.connect(db)
+c = conn.cursor()
+reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
+
+# Log in
 logged_in = False
 for attempt in range(5):
     try:
@@ -20,15 +25,16 @@ for attempt in range(5):
         print 'ol.autologin() error; retrying'
 if not logged_in:
     sys.exit("Failed to log in.")
-conn = sqlite3.connect(db)
-c = conn.cursor()
-reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
+
+# Go through the csv file in batches until done
 done = False
 while not done:
     olids = []
     ltids = []
     iddict = {}
     data = []
+
+    # Get a batch of keys from the file
     for a in range(batch_size):
         try:
             row = next(reader)
@@ -43,12 +49,16 @@ while not done:
             continue
         olids.append(key)
         iddict[key] = row[0]
+
+    # Fetch the book data from the site
     for attempt in range(5):
         try:
             data = ol.get_many(olids)
             break
         except:
             print 'ol.get_many() error; retrying'
+
+    # Add the ids to the metadata
     for book in data:
         ltid = iddict[book['key']]
         if book.has_key('identifiers'):
@@ -59,12 +69,16 @@ while not done:
                 book['identifiers']['librarything'] = [ltid]
         else:
             book['identifiers'] = {'librarything': [ltid]}
+
+    # Save the data back to the site
     for attempt in range(5):
         try:
             print ol.save_many(data, 'added LibraryThing ID')
             break
         except:
             print 'ol.save_many() error; retrying'
+
+    # Add the batch to the sqlite database 
     for k in iddict:
         c.execute('insert into ids values (?, ?)', (k, iddict[k]))
         conn.commit()
