@@ -5,16 +5,20 @@ import csv
 import string
 import sqlite3
 import _init_path
+import sys
 from openlibrary.api import OpenLibrary
 
 ol = OpenLibrary('http://openlibrary.org/')
-
+loggedin = False
 for attempt in range(5):
     try:
         ol.autologin()
+        loggedin = True
         break
     except:
         print 'ol.autologin() error; retrying'
+if not loggedin:
+    sys.exit("Failed to log in.")
 conn = sqlite3.connect(db)
 c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
