@@ -1,5 +1,6 @@
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
+batch_size = 1000
 
 import csv
 import string
@@ -9,15 +10,15 @@ import sys
 from openlibrary.api import OpenLibrary
 
 ol = OpenLibrary('http://openlibrary.org/')
-loggedin = False
+logged_in = False
 for attempt in range(5):
     try:
         ol.autologin()
-        loggedin = True
+        logged_in = True
         break
     except:
         print 'ol.autologin() error; retrying'
-if not loggedin:
+if not logged_in:
     sys.exit("Failed to log in.")
 conn = sqlite3.connect(db)
 c = conn.cursor()
@@ -28,7 +29,7 @@ while not done:
     ltids = []
     iddict = {}
     data = []
-    for a in range(1000):
+    for a in range(batch_size):
         try:
             row = next(reader)
         except:
