@@ -29,7 +29,7 @@ for attempt in range(5):
     except:
         print 'ol.autologin() error; retrying'
 if not logged_in:
-    sys.exit("Failed to log in.")
+    sys.exit('Failed to log in.')
 
 # Go through the csv file in batches until done
 done = False
@@ -59,12 +59,16 @@ while not done:
         iddict[key] = row[0]
 
     # Fetch the book data from the site
+    got_data = False
     for attempt in range(5):
         try:
             data = ol.get_many(olids)
+            got_data = True
             break
         except:
             print 'ol.get_many() error; retrying'
+    if not got_data:
+        sys.exit('Failed to get data.')
 
     # Add the ids to the metadata
     for book in data:
@@ -79,12 +83,16 @@ while not done:
             book['identifiers'] = {'librarything': [ltid]}
 
     # Save the data back to the site
+    saved = False
     for attempt in range(5):
         try:
             print ol.save_many(data, 'added LibraryThing ID')
+            saved = True
             break
         except:
             print 'ol.save_many() error; retrying'
+    if not saved:
+        sys.exit('Failed to save data.')
 
     # Add the batch to the sqlite database
     for k in iddict:
