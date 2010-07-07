@@ -5,8 +5,9 @@
 
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
-batch_size = 10000
+batch_size = 100
 
+import traceback
 import csv
 import string
 import sqlite3
@@ -32,12 +33,15 @@ if not logged_in:
     sys.exit('Failed to log in.')
 
 # Go through the csv file in batches until done
+batch_count = 0
 done = False
 while not done:
     olids = []
     ltids = []
     iddict = {}
     data = []
+    batch_count += 1
+    print 'Starting batch %r.' % batch_count
 
     # Get a batch of keys from the file
     for a in range(batch_size):
@@ -49,14 +53,24 @@ while not done:
         olid = row[1]
         key = '/books' + olid[olid.rindex('/'):len(olid)]
 
-        # If the book has already been updated, skip it
-        c.execute('select * from ids where key = ?', (key,))
-        x = c.fetchone()
-        if x is not None:
+        # Skipping a particular problematic book
+        if key == '/books/OL5720M':
             continue
+
+        # If the book has already been updated, skip it
+        #c.execute('select * from ids where key = ?', (key,))
+        #x = c.fetchone()
+        #if x is not None:
+            #continue
 
         olids.append(key)
         iddict[key] = row[0]
+
+    # If the whole batch has been done already, skip to the next batch
+    print olids
+    if len(olids) == 0:
+        print 'Batch %r already done; skipping.' % batch_count
+        continue
 
     # Fetch the book data from the site
     got_data = False
@@ -86,15 +100,17 @@ while not done:
     saved = False
     for attempt in range(5):
         try:
+            print 'Trying to save_many'
             print ol.save_many(data, 'added LibraryThing ID')
             saved = True
             break
         except:
-            print 'ol.save_many() error; retrying'
+            print 'ol.save_many() error'
+            traceback.print_exc(file=sys.stdout)
     if not saved:
         sys.exit('Failed to save data.')
 
     # Add the batch to the sqlite database
-    for k in iddict:
-        c.execute('insert into ids values (?, ?)', (k, iddict[k]))
-        conn.commit()
+    #for k in iddict:
+        #c.execute('insert into ids values (?, ?)', (k, iddict[k]))
+        #conn.commit()
