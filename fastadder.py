@@ -1,6 +1,6 @@
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
-batch_size = 1000
+batch_size = 10
 
 import csv
 import string
@@ -9,7 +9,7 @@ import _init_path
 import sys
 from openlibrary.api import OpenLibrary
 
-ol = OpenLibrary('http://openlibrary.org/')
+ol = OpenLibrary("http://anand.openlibrary.org")
 conn = sqlite3.connect(db)
 c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
