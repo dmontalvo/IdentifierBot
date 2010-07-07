@@ -5,7 +5,7 @@
 
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
-batch_size = 10
+batch_size = 10000
 
 import csv
 import string
