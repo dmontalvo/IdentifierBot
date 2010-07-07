@@ -1,3 +1,8 @@
+#!/usr/bin/python
+
+# IdentifierBot
+# by Daniel Montalvo
+
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
 batch_size = 10
@@ -43,10 +48,13 @@ while not done:
             break
         olid = row[1]
         key = '/books' + olid[olid.rindex('/'):len(olid)]
+
+        # If the book has already been updated, skip it
         c.execute('select * from ids where key = ?', (key,))
         x = c.fetchone()
-        if x != None:
+        if x is not None:
             continue
+
         olids.append(key)
         iddict[key] = row[0]
 
@@ -78,7 +86,7 @@ while not done:
         except:
             print 'ol.save_many() error; retrying'
 
-    # Add the batch to the sqlite database 
+    # Add the batch to the sqlite database
     for k in iddict:
         c.execute('insert into ids values (?, ?)', (k, iddict[k]))
         conn.commit()
