@@ -53,16 +53,15 @@ while not done:
         olid = row[1]
         key = '/books' + olid[olid.rindex('/'):len(olid)]
 
-        # Skipping a particular problematic book
-        if key == '/books/OL5720M':
-            continue
-
-        # If the book has already been updated, skip it
-        #c.execute('select * from ids where key = ?', (key,))
-        #x = c.fetchone()
-        #if x is not None:
+        # Skipping problematic book
+        #if key == '/books/OL30383M':
             #continue
 
+        # If the book has already been updated, skip it
+        #x = None
+        #c.execute('select * from ids where key = ?', (key,))
+        #x = c.fetchone()
+        #if x is None:
         olids.append(key)
         iddict[key] = row[0]
 
@@ -80,7 +79,8 @@ while not done:
             got_data = True
             break
         except:
-            print 'ol.get_many() error; retrying'
+            print 'ol.get_many() error'
+            traceback.print_exc(file=sys.stdout)
     if not got_data:
         sys.exit('Failed to get data.')
 
