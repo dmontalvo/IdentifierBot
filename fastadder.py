@@ -13,12 +13,27 @@ import string
 import sqlite3
 import _init_path
 import sys
-from openlibrary.api import OpenLibrary
+from openlibrary.api import OpenLibrary, marshal
 
 ol = OpenLibrary("http://anand.openlibrary.org")
 conn = sqlite3.connect(db)
 c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
+
+def fix_toc(doc):
+     doc = marshal(doc)
+
+     def f(d):
+         """function to fix one toc entry."""
+         if d.get('type') == '/type/text':
+             return dict(title=d['value'])
+         else:
+             return d
+
+     toc = doc.get('table_of_contents')
+     if toc:
+         doc['table_of_contents'] = [f(x) for x in toc]
+     return doc
 
 # Log in
 logged_in = False
@@ -53,10 +68,6 @@ while not done:
         olid = row[1]
         key = '/books' + olid[olid.rindex('/'):len(olid)]
 
-        # Skipping problematic book
-        #if key == '/books/OL30383M':
-            #continue
-
         # If the book has already been updated, skip it
         #x = None
         #c.execute('select * from ids where key = ?', (key,))
@@ -78,11 +89,16 @@ while not done:
             data = ol.get_many(olids)
             got_data = True
             break
+        except KeyboardInterrupt:
+             sys.exit(0)
         except:
             print 'ol.get_many() error'
             traceback.print_exc(file=sys.stdout)
     if not got_data:
         sys.exit('Failed to get data.')
+
+    # Fix toc errors
+    data = [fix_toc(doc) for doc in data]
 
     # Add the ids to the metadata
     for book in data:
@@ -104,6 +120,8 @@ while not done:
             print ol.save_many(data, 'added LibraryThing ID')
             saved = True
             break
+        except KeyboardInterrupt:
+             sys.exit(0)
         except:
             print 'ol.save_many() error'
             traceback.print_exc(file=sys.stdout)
