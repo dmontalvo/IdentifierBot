@@ -5,8 +5,10 @@
 
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
-batch_size = 100
+batch_size = 5
+book_count = 4327709
 
+import time
 import traceback
 import csv
 import string
@@ -50,6 +52,7 @@ if not logged_in:
 # Go through the csv file in batches until done
 batch_count = 0
 done = False
+t0 = time.time()
 while not done:
     olids = []
     ltids = []
@@ -132,3 +135,6 @@ while not done:
     #for k in iddict:
         #c.execute('insert into ids values (?, ?)', (k, iddict[k]))
         #conn.commit()
+    t1 = time.time()
+    predicted = (t1 - t0) * book_count / batch_size / batch_count / 3600
+    print 'Predicted hours remaining: %r' % predicted
