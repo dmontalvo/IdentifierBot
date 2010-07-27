@@ -5,7 +5,7 @@
 
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
 db = 'ids.sqlite'
-batch_size = 5
+batch_size = 1000
 book_count = 4327709
 
 import time
@@ -17,7 +17,7 @@ import _init_path
 import sys
 from openlibrary.api import OpenLibrary, marshal
 
-ol = OpenLibrary("http://anand.openlibrary.org")
+ol = OpenLibrary("http://openlibrary.org")
 conn = sqlite3.connect(db)
 c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
@@ -136,5 +136,5 @@ while not done:
         #c.execute('insert into ids values (?, ?)', (k, iddict[k]))
         #conn.commit()
     t1 = time.time()
-    predicted = (t1 - t0) * book_count / batch_size / batch_count / 3600
+    predicted = (t1 - t0) * (book_count / batch_size / batch_count - 1) / 3600
     print 'Predicted hours remaining: %r' % predicted
