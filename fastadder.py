@@ -4,23 +4,20 @@
 # by Daniel Montalvo
 
 csvfile = 'LibraryThing_to_OpenLibrary.csv'
-db = 'ids.sqlite'
-batch_size = 1000
-book_count = 4327709
+batch_size = 500
 
-import time
 import traceback
 import csv
 import string
-import sqlite3
 import _init_path
 import sys
+
+sys.path.append('/petabox/sw/lib/python')
 from openlibrary.api import OpenLibrary, marshal
 
 ol = OpenLibrary("http://openlibrary.org")
-conn = sqlite3.connect(db)
-c = conn.cursor()
 reader = csv.reader(open(csvfile), delimiter='\t', quotechar='|')
+f = open('authors.txt', 'w')
 
 def fix_toc(doc):
      doc = marshal(doc)
@@ -34,7 +31,8 @@ def fix_toc(doc):
 
      toc = doc.get('table_of_contents')
      if toc:
-         doc['table_of_contents'] = [f(x) for x in toc]
+          if type(toc) == dict:
+               doc['table_of_contents'] = [f(x) for x in toc]
      return doc
 
 # Log in
@@ -52,7 +50,6 @@ if not logged_in:
 # Go through the csv file in batches until done
 batch_count = 0
 done = False
-t0 = time.time()
 while not done:
     olids = []
     ltids = []
@@ -64,18 +61,13 @@ while not done:
     # Get a batch of keys from the file
     for a in range(batch_size):
         try:
-            row = next(reader)
+            row = reader.next()
         except:
             done = True
+            print 'Finished reading from csv file.'
             break
         olid = row[1]
         key = '/books' + olid[olid.rindex('/'):len(olid)]
-
-        # If the book has already been updated, skip it
-        #x = None
-        #c.execute('select * from ids where key = ?', (key,))
-        #x = c.fetchone()
-        #if x is None:
         olids.append(key)
         iddict[key] = row[0]
 
@@ -88,53 +80,74 @@ while not done:
     # Fetch the book data from the site
     got_data = False
     for attempt in range(5):
-        try:
-            data = ol.get_many(olids)
-            got_data = True
-            break
-        except KeyboardInterrupt:
-             sys.exit(0)
-        except:
-            print 'ol.get_many() error'
-            traceback.print_exc(file=sys.stdout)
+         try:
+              data = ol.get_many(olids)
+              got_data = True
+              break
+         except KeyboardInterrupt:
+              sys.exit(0)
+         except:
+              print 'ol.get_many() error'
+              traceback.print_exc(file=sys.stdout)
     if not got_data:
         sys.exit('Failed to get data.')
+    datalist = []
+    for doc_key in data:
+         datalist.append(data[doc_key])
 
     # Fix toc errors
-    data = [fix_toc(doc) for doc in data]
-
+    datalist = [fix_toc(doc) for doc in datalist]
+    
     # Add the ids to the metadata
-    for book in data:
+    newlist = []
+    for book in datalist:
+        newbook = True
         ltid = iddict[book['key']]
         if book.has_key('identifiers'):
             if book['identifiers'].has_key('librarything'):
                 if book['identifiers']['librarything'].count(ltid) == 0:
                     book['identifiers']['librarything'].append(ltid)
+                else:
+                    newbook = False
             else:
                 book['identifiers']['librarything'] = [ltid]
         else:
             book['identifiers'] = {'librarything': [ltid]}
+        if newbook:
+            newlist.append(book)
 
     # Save the data back to the site
+    # If there's nothing to update, skip save_many
+    if len(newlist) == 0:
+         continue
     saved = False
-    for attempt in range(5):
-        try:
-            print 'Trying to save_many'
-            print ol.save_many(data, 'added LibraryThing ID')
-            saved = True
-            break
-        except KeyboardInterrupt:
-             sys.exit(0)
-        except:
-            print 'ol.save_many() error'
-            traceback.print_exc(file=sys.stdout)
-    if not saved:
-        sys.exit('Failed to save data.')
-
-    # Add the batch to the sqlite database
-    #for k in iddict:
-        #c.execute('insert into ids values (?, ?)', (k, iddict[k]))
-        #conn.commit()
-    t1 = time.time()
-    predicted = (t1 - t0) * (book_count / batch_size / batch_count - 1) / 3600
-    print 'Predicted hours remaining: %r' % predicted
+    #for attempt in range(5):
+    try:
+         print 'Trying to save_many'
+         print ol.save_many(newlist, 'added LibraryThing ID')
+         saved = True
+    except KeyboardInterrupt:
+         sys.exit(0)
+    except:
+         badlist = []
+         for e in newlist:
+              for akey in e.get('authors', []):
+                   got_author = False
+                   for attempt in range(5):
+                        try:
+                             a = ol.get(akey['key'])
+                             got_author = True
+                             break
+                        except:
+                             print 'ol.get(author) error; retrying.'
+                   if not got_author:
+                        sys.exit('Failed to get author: %r' % akey['key'])
+                   if a['type'] == '/type/author':
+                        continue
+                   if badlist.count(e) == 0:
+                        badlist.append(e)
+         for badbook in badlist:
+              newlist.remove(badbook)
+              f.write(badbook['key'])
+              f.write('\n')
+         print ol.save_many(newlist, 'added LibraryThing ID')
